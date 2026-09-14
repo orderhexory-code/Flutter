@@ -1,125 +1,394 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const NotesApp());
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
+// ═══════════════════════════════════════════════
+// APP ROOT
+// ═══════════════════════════════════════════════
+class NotesApp extends StatelessWidget {
+  const NotesApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'Notes',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.deepPurple, useMaterial3: true),
+      home: const HomeScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+// ═══════════════════════════════════════════════
+// MODEL
+// ═══════════════════════════════════════════════
+class Note {
+  final String id;
+  String title;
+  String body;
+  final DateTime createdAt;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+  Note({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+  });
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'createdAt': createdAt.toIso8601String(),
+      };
 
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  factory Note.fromJson(Map<String, dynamic> j) => Note(
+        id: j['id'],
+        title: j['title'],
+        body: j['body'],
+        createdAt: DateTime.parse(j['createdAt']),
+      );
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+// ═══════════════════════════════════════════════
+// STORAGE SERVICE
+// ═══════════════════════════════════════════════
+class StorageService {
+  static const _key = 'notes_v1';
 
-  void _incrementCounter() {
+  Future<List<Note>> load() async {
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getString(_key);
+    if (raw == null) return [];
+    return (jsonDecode(raw) as List).map((e) => Note.fromJson(e)).toList();
+  }
+
+  Future<void> save(List<Note> notes) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_key, jsonEncode(notes.map((e) => e.toJson()).toList()));
+  }
+}
+
+// ═══════════════════════════════════════════════
+// SCREEN 1: HOME
+// ═══════════════════════════════════════════════
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _storage = StorageService();
+  List<Note> _notes = [];
+  String _query = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final n = await _storage.load();
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _notes = n;
+      _loading = false;
     });
+  }
+
+  Future<void> _persist() => _storage.save(_notes);
+
+  Future<void> _openEditor({Note? existing}) async {
+    final result = await Navigator.push<Note>(
+      context,
+      MaterialPageRoute(builder: (_) => AddNoteScreen(existing: existing)),
+    );
+    if (result == null) return;
+    setState(() {
+      if (existing == null) {
+        _notes.insert(0, result);
+      } else {
+        final i = _notes.indexWhere((n) => n.id == existing.id);
+        if (i != -1) _notes[i] = result;
+      }
+    });
+    _persist();
+  }
+
+  void _delete(String id) {
+    setState(() => _notes.removeWhere((n) => n.id == id));
+    _persist();
+  }
+
+  List<Note> get _filtered {
+    if (_query.isEmpty) return _notes;
+    final q = _query.toLowerCase();
+    return _notes
+        .where((n) =>
+            n.title.toLowerCase().contains(q) ||
+            n.body.toLowerCase().contains(q))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final list = _filtered;
+
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+        title: const Text('Mere Notes'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'Search notes...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: list.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.note_alt_outlined,
+                            size: 80, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(
+                          _query.isEmpty ? 'Koi note nahi hai' : 'Kuch nahi mila',
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                        if (_query.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Text('+ dabakar naya banao'),
+                          ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: list.length,
+                    itemBuilder: (_, i) => NoteCard(
+                      note: list[i],
+                      onTap: () => _openEditor(existing: list[i]),
+                      onDelete: () => _delete(list[i].id),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openEditor(),
+        icon: const Icon(Icons.add),
+        label: const Text('Naya Note'),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// SCREEN 2: ADD / EDIT NOTE
+// ═══════════════════════════════════════════════
+class AddNoteScreen extends StatefulWidget {
+  final Note? existing;
+  const AddNoteScreen({super.key, this.existing});
+
+  @override
+  State<AddNoteScreen> createState() => _AddNoteScreenState();
+}
+
+class _AddNoteScreenState extends State<AddNoteScreen> {
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _bodyCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl = TextEditingController(text: widget.existing?.title ?? '');
+    _bodyCtrl = TextEditingController(text: widget.existing?.body ?? '');
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _bodyCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (_titleCtrl.text.trim().isEmpty && _bodyCtrl.text.trim().isEmpty) {
+      Navigator.pop(context);
+      return;
+    }
+    final note = Note(
+      id: widget.existing?.id ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
+      title: _titleCtrl.text.trim(),
+      body: _bodyCtrl.text.trim(),
+      createdAt: widget.existing?.createdAt ?? DateTime.now(),
+    );
+    Navigator.pop(context, note);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.existing != null;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEdit ? 'Edit Note' : 'Naya Note'),
+        actions: [
+          IconButton(icon: const Icon(Icons.check), onPressed: _save),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _titleCtrl,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(
+                hintText: 'Title',
+                border: InputBorder.none,
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: TextField(
+                controller: _bodyCtrl,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                decoration: const InputDecoration(
+                  hintText: 'Note likho...',
+                  border: InputBorder.none,
+                ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// SCREEN 3: SETTINGS
+// ═══════════════════════════════════════════════
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(
+        children: [
+          const ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text('App version'),
+            subtitle: Text('1.0.0'),
+          ),
+          const ListTile(
+            leading: Icon(Icons.person_outline),
+            title: Text('Developer'),
+            subtitle: Text('Aapka naam'),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.delete_sweep_outlined),
+            title: const Text('Clear all data'),
+            onTap: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Sure?'),
+                  content: const Text('Saare notes delete ho jayenge.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+              if (ok == true) {
+                final p = await SharedPreferences.getInstance();
+                await p.remove('notes_v1');
+                if (context.mounted) Navigator.pop(context);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// WIDGET: NOTE CARD
+// ═══════════════════════════════════════════════
+class NoteCard extends StatelessWidget {
+  final Note note;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const NoteCard({
+    super.key,
+    required this.note,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: ListTile(
+        onTap: onTap,
+        title: Text(
+          note.title.isEmpty ? '(Bina title)' : note.title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          note.body,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          onPressed: onDelete,
+        ),
+      ),
     );
   }
 }
