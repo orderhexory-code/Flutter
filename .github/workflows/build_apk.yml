@@ -26,19 +26,21 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Clean and Install dependencies
-        run: |
-          flutter clean
-          flutter pub get
+      - name: Run auto-fix script (Python)
+        run: python3 scripts/auto_fix.py
+        continue-on-error: true
 
-      # Icon aur Splash steps ko abhi comment karo test ke liye
-      # - name: Generate App Icons
-      #   run: flutter pub run flutter_launcher_icons
-      #   continue-on-error: true
+      - name: Run auto-fix script (Shell fallback)
+        run: bash scripts/auto_fix.sh
+        continue-on-error: true
 
-      # - name: Generate Splash Screen
-      #   run: flutter pub run flutter_native_splash:create
-      #   continue-on-error: true
+      - name: Generate App Icons
+        run: flutter pub run flutter_launcher_icons
+        continue-on-error: true
+
+      - name: Generate Splash Screen
+        run: flutter pub run flutter_native_splash:create
+        continue-on-error: true
 
       - name: Build APK
         run: flutter build apk --release
