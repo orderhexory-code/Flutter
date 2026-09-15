@@ -26,19 +26,19 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Flutter Doctor
-        run: flutter doctor -v
+      - name: Clean and Install dependencies
+        run: |
+          flutter clean
+          flutter pub get
 
-      - name: Install dependencies
-        run: flutter pub get
+      # Icon aur Splash steps ko abhi comment karo test ke liye
+      # - name: Generate App Icons
+      #   run: flutter pub run flutter_launcher_icons
+      #   continue-on-error: true
 
-      - name: Generate App Icons
-        run: flutter pub run flutter_launcher_icons
-        continue-on-error: true
-
-      - name: Generate Splash Screen
-        run: flutter pub run flutter_native_splash:create
-        continue-on-error: true
+      # - name: Generate Splash Screen
+      #   run: flutter pub run flutter_native_splash:create
+      #   continue-on-error: true
 
       - name: Build APK
         run: flutter build apk --release
