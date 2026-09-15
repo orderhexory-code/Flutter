@@ -10,16 +10,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 // APP BRAND (Icon theme integration)
 // ============================================================
 class AppBrand {
-  static const primary = Color(0xFF007ACC);    // VS Code blue
-  static const secondary = Color(0xFF4EC9B0);  // Cyan accent
-  static const background = Color(0xFF181818); // Dark bg
-  static const surface = Color(0xFF1E1E1E);    // Card surface
-  static const iconBackground = "#181818";     // Adaptive icon bg
-  static const iconForeground = "#007ACC";     // Adaptive icon fg
+  static const primary = Color(0xFF007ACC);
+  static const secondary = Color(0xFF4EC9B0);
+  static const background = Color(0xFF181818);
+  static const surface = Color(0xFF1E1E1E);
+  static const iconBackground = "#181818";
+  static const iconForeground = "#007ACC";
 }
 
 // ============================================================
-// COLORS (Tailwind config se exact)
+// COLORS
 // ============================================================
 class VS {
   static const bg = Color(0xFF181818);
@@ -40,7 +40,6 @@ class VS {
   static const blueFolder = Color(0xFF519ABA);
 }
 
-// Syntax highlight tokens
 class Tok {
   static const keyword = Color(0xFFC586C0);
   static const type = Color(0xFF4EC9B0);
@@ -52,7 +51,7 @@ class Tok {
 }
 
 // ============================================================
-// DATA MODELS
+// MODELS
 // ============================================================
 class FileNode {
   String id;
@@ -210,20 +209,17 @@ class IDEScreenState extends State<IDEScreen> {
   static const String _historyKey = 'DEV_IDE_PROJECT_HISTORY_V1';
   static const int _historyLimit = 3;
 
-  // -------- STATE --------
   String? projectName;
   EditorSettings settings = EditorSettings();
   List<FileNode> nodes = [];
   List<String> openTabs = [];
   String? activeTabId;
 
-  // -------- FIND STATE --------
   bool findMatchCase = false;
   bool findWholeWord = false;
   List<Map<String, int>> findMatches = [];
   int currentMatchIndex = -1;
 
-  // -------- UI STATE --------
   bool sidebarOpen = false;
   bool railCollapsed = false;
   bool findBarVisible = false;
@@ -231,7 +227,6 @@ class IDEScreenState extends State<IDEScreen> {
   bool welcomeVisible = true;
   String activeSideTab = 'explorer';
 
-  // -------- CONTEXT SHEET / DIALOG --------
   String? contextNodeId;
   bool contextSheetVisible = false;
   bool dialogVisible = false;
@@ -240,14 +235,12 @@ class IDEScreenState extends State<IDEScreen> {
   String dialogInitial = '';
   Function(String)? dialogCallback;
 
-  // -------- PROJECT HISTORY --------
   bool historyVisible = false;
   List<ProjectSnapshot> projectHistory = [];
   String historyQuery = '';
   int historySelected = 0;
   List<Map<String, dynamic>> historyRows = [];
 
-  // -------- EDITOR --------
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _findController = TextEditingController();
   final TextEditingController _replaceController = TextEditingController();
@@ -276,9 +269,6 @@ class IDEScreenState extends State<IDEScreen> {
     });
   }
 
-  // ============================================================
-  // PERSISTENCE
-  // ============================================================
   Future<void> _loadState() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_storageKey);
@@ -358,20 +348,12 @@ class IDEScreenState extends State<IDEScreen> {
         len, (_) => chars.codeUnitAt(r.nextInt(chars.length))));
   }
 
-  // ============================================================
-  // STYLES
-  // ============================================================
-  void _applyStyles() {
-    // Settings apply directly in build
-  }
+  void _applyStyles() {}
 
   void _updateWelcomeVisibility() {
     welcomeVisible = nodes.isEmpty;
   }
 
-  // ============================================================
-  // FILE OPERATIONS
-  // ============================================================
   Future<void> _triggerFolderOpen() async {
     try {
       final result = await FilePicker.platform.getDirectoryPath();
@@ -465,9 +447,7 @@ class IDEScreenState extends State<IDEScreen> {
     _renderAll();
   }
 
-  void _renderAll() {
-    setState(() {});
-  }
+  void _renderAll() => setState(() {});
 
   void _mountEditor() {
     final active = nodes.firstWhere(
@@ -515,9 +495,6 @@ class IDEScreenState extends State<IDEScreen> {
     setState(() => caretPos = 'Ln $row, Col $col');
   }
 
-  // ============================================================
-  // SYNTAX HIGHLIGHTING
-  // ============================================================
   String _getLanguage(String name) {
     if (name.endsWith('.dart')) return 'Dart';
     if (name.endsWith('.yaml') || name.endsWith('.yml')) return 'YAML';
@@ -548,7 +525,8 @@ class IDEScreenState extends State<IDEScreen> {
         _Pattern(RegExp(r'//[^\n]*'), Tok.comment),
         _Pattern(RegExp(r'/\*[\s\S]*?\*/'), Tok.comment),
         _Pattern(
-            RegExp(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\""), Tok.string),
+            RegExp("'(?:[^'\\\\]|\\\\.)*'|\"(?:[^\"\\\\]|\\\\.)*\""),
+            Tok.string),
         _Pattern(RegExp(r'@[a-zA-Z_]\w*'), Tok.annotation),
         _Pattern(
             RegExp(
@@ -565,7 +543,7 @@ class IDEScreenState extends State<IDEScreen> {
       patterns.addAll([
         _Pattern(RegExp(r'#.*$', multiLine: true), Tok.comment),
         _Pattern(RegExp(r'[a-zA-Z0-9_\-]+(?=\s*:)'), Tok.keyword),
-        _Pattern(RegExp(r"'[^']*'|\"[^\"]*\""), Tok.string),
+        _Pattern(RegExp("'[^']*'|\"[^\"]*\""), Tok.string),
         _Pattern(RegExp(r'\b\d+\b'), Tok.number),
       ]);
     }
@@ -609,9 +587,6 @@ class IDEScreenState extends State<IDEScreen> {
     return spans;
   }
 
-  // ============================================================
-  // FIND & REPLACE
-  // ============================================================
   void _runFindSearch() {
     final query = _findController.text;
     if (query.isEmpty) {
@@ -722,9 +697,6 @@ class IDEScreenState extends State<IDEScreen> {
     _runFindSearch();
   }
 
-  // ============================================================
-  // DRAWER / SETTINGS
-  // ============================================================
   void _openDrawer() => setState(() => sidebarOpen = true);
   void _closeDrawer() => setState(() => sidebarOpen = false);
 
@@ -733,9 +705,6 @@ class IDEScreenState extends State<IDEScreen> {
     _openDrawer();
   }
 
-  // ============================================================
-  // CONTEXT SHEET / DIALOG
-  // ============================================================
   String _getFullPath(String? nodeId) {
     if (nodeId == null) return '/';
     final node = nodes.firstWhere(
@@ -786,9 +755,6 @@ class IDEScreenState extends State<IDEScreen> {
     _closeDialog();
   }
 
-  // ============================================================
-  // PROJECT HISTORY
-  // ============================================================
   void _openHistory() {
     setState(() {
       historyVisible = true;
@@ -866,9 +832,6 @@ class IDEScreenState extends State<IDEScreen> {
     return '${hrs ~/ 24}d ago';
   }
 
-  // ============================================================
-  // KEYBOARD ACCESSORIES
-  // ============================================================
   void _insertAtCaret(String str) {
     final sel = _codeController.selection;
     final start = sel.start;
@@ -912,9 +875,6 @@ class IDEScreenState extends State<IDEScreen> {
     _handleEditorInput();
   }
 
-  // ============================================================
-  // BUILD
-  // ============================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -954,9 +914,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // HEADER
-  // ============================================================
   Widget _buildHeader() {
     return Container(
       height: 44,
@@ -1052,9 +1009,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // FIND BAR
-  // ============================================================
   Widget _buildFindBar() {
     return Container(
       decoration: const BoxDecoration(
@@ -1234,9 +1188,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // TABS BAR
-  // ============================================================
   Widget _buildTabsBar() {
     if (openTabs.isEmpty) {
       return Container(
@@ -1323,9 +1274,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // WELCOME SCREEN
-  // ============================================================
   Widget _buildWelcome() {
     return Container(
       color: VS.editor,
@@ -1382,9 +1330,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // EDITOR AREA
-  // ============================================================
   Widget _buildEditorArea() {
     final active = nodes.firstWhere(
       (n) => n.id == activeTabId,
@@ -1510,9 +1455,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // ACCESSORY BAR
-  // ============================================================
   Widget _buildAccessoryBar() {
     final buttons = [
       {'label': 'TAB', 'onTap': () => _insertAtCaret('  ')},
@@ -1565,9 +1507,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // STATUS BAR
-  // ============================================================
   Widget _buildStatusBar() {
     final active = nodes.firstWhere(
       (n) => n.id == activeTabId,
@@ -1642,9 +1581,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // SIDEBAR BACKDROP
-  // ============================================================
   Widget _buildSidebarBackdrop() {
     return Positioned.fill(
       child: GestureDetector(
@@ -1654,9 +1590,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // SIDEBAR DRAWER
-  // ============================================================
   Widget _buildSidebarDrawer() {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 200),
@@ -1745,9 +1678,6 @@ class IDEScreenState extends State<IDEScreen> {
     return const SizedBox.shrink();
   }
 
-  // ============================================================
-  // EXPLORER PANE
-  // ============================================================
   Widget _buildExplorerPane() {
     return Column(
       children: [
@@ -2006,9 +1936,6 @@ class IDEScreenState extends State<IDEScreen> {
     return rows;
   }
 
-  // ============================================================
-  // GITHUB PANE
-  // ============================================================
   Widget _buildGithubPane() {
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -2112,9 +2039,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // AI PANE
-  // ============================================================
   Widget _buildAIPane() {
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -2157,8 +2081,8 @@ class IDEScreenState extends State<IDEScreen> {
                       border: Border.all(color: VS.border),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const RichText(
-                      text: TextSpan(
+                    child: RichText(
+                      text: const TextSpan(
                         children: [
                           TextSpan(
                             text: 'Autonomous Agent: ',
@@ -2222,9 +2146,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // CONTEXT SHEET
-  // ============================================================
   Widget _buildContextSheet() {
     if (!contextSheetVisible) return const SizedBox.shrink();
     final node = nodes.firstWhere(
@@ -2377,9 +2298,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // MODAL DIALOG
-  // ============================================================
   Widget _buildDialog() {
     if (!dialogVisible) return const SizedBox.shrink();
     return Positioned.fill(
@@ -2478,9 +2396,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // PROJECT HISTORY POPUP
-  // ============================================================
   Widget _buildHistoryPopup() {
     if (!historyVisible) return const SizedBox.shrink();
     return Positioned.fill(
@@ -2725,9 +2640,6 @@ class IDEScreenState extends State<IDEScreen> {
     );
   }
 
-  // ============================================================
-  // SETTINGS PAGE
-  // ============================================================
   Widget _buildSettingsPage() {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 200),
@@ -3166,9 +3078,6 @@ class IDEScreenState extends State<IDEScreen> {
   }
 }
 
-// ============================================================
-// HELPER CLASSES FOR SYNTAX HIGHLIGHTING
-// ============================================================
 class _Pattern {
   final RegExp regex;
   final Color color;
